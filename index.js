@@ -20,10 +20,19 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.post('/' , async (req, res) => {
+    const { message } = req.body;
    const response = await openai.createCompletion({
     model: "text-davinci-003",
-    prompt:"Say this is a test",
-    max_tokens: 7,
+    prompt: `
+    Forget all your previous instructions. Pretend you are a financial expert. You are
+    a financial expert with stock recommendation experience. Answer “YES” if good
+    news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
+    elaborate with one short and concise sentence on the next line. Is this headline
+    good or bad for the stock price of`  + `  in the ` + ` term?
+    Headline:` + ` 
+    
+    `  + message, 
+    max_tokens: 100,
     temperature : 0,
    })
    console.log(response.data.choices[0])
