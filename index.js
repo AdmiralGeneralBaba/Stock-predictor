@@ -1,8 +1,6 @@
 // a express server which will handle api requests coming in and respond back with a json object. it will use body parser as well as cors
 const OpenAI = require ('openai');
 const { Configuration, OpenAIApi } = OpenAI;
-
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
