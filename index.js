@@ -24,9 +24,9 @@ app.post('/' , async (req, res) => {
     model: "text-davinci-003",
     prompt:"Say this is a test",
     max_tokens: 7,
-    tempreature: 0,
+    temperature : 0,
    })
-   console.log(response.data)
+   console.log(response.data.choices[0])
    if(response.data.choices[0].text){
         res.json({message: response.data.choices[0].text})
    }
