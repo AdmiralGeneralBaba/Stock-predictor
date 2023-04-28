@@ -28,7 +28,7 @@ app.post('/' , async (req, res) => {
    })
    console.log(response.data)
    if(response.data.choices[0].text){
-        res.json({message: response.data.choice[0].text})
+        res.json({message: response.data.choices[0].text})
    }
 });
 
