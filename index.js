@@ -30,19 +30,12 @@ app.post('/', async (req, res) => {
       headers: {'User-Agent': 'request'}
     });
     headline = response.data.feed[0].title;  
-    console.log(headline);  // log the first headline
+    console.log(headline);  // log the first headlinea
   } catch (error) {
     console.log(error);
   }
 
   try {
-    const tickersResponse = await axios.get('http://localhost:3001/tickers');
-    const tickersData = tickersResponse.data;
-    console.log(tickersData); // log the tickers data
-
-    // Filter the data to find the ticker matching the message
-    const tickerData = tickersData.filter(ticker => ticker.symbol === message)[0];
-    console.log("Ticker:", tickerData.symbol);
 
     const openAIResponse = await openai.createCompletion({
       model: "text-davinci-003",
@@ -106,11 +99,26 @@ app.get('/tickers', async (req, res) => {
 
     console.log("Symbols in the bottom 10th percentile:", symbolsBottom10thPercentile);
 
+    // Call API requests for the first three tickers in the bottom 10th percentile
+    const firstThreeTickers = symbolsBottom10thPercentile.slice(0, 3);
+    const newsSentimentPromises = firstThreeTickers.map(async (ticker) => {
+      try {
+        const tickerResponse = await axios.get(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=1&apikey=75E6A1OE5RSA3LIS`);
+        console.log(`News sentiment for ${ticker}:`, tickerResponse.data);
+      } catch (error) {
+        console.error(`Error fetching news sentiment for ${ticker}: ${error}`);
+      }
+    });
+    
+    await Promise.all(newsSentimentPromises);
     res.send("Symbols in the bottom 10th percentile: " + symbolsBottom10thPercentile.join(', '));
   } catch (err) {
+    console.error("An error occurred: " + err);
     res.status(500).send("An error occurred: " + err);
   }
 });
+
+
 
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:' + port);
