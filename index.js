@@ -19,45 +19,53 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.post('/', async (req, res) => {
-  const { message } = req.body;
-
-  //Alpha vantage go:
-  const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers='+ message +'&limit=1&apikey=75E6A1OE5RSA3LIS';
-
-  let headline = "";
   try {
-    const response = await axios.get(url, {
-      headers: {'User-Agent': 'request'}
-    });
-    headline = response.data.feed[0].title;  
-    console.log(headline);  // log the first headlinea
-  } catch (error) {
-    console.log(error);
-  }
+    const symbolsBottom10thPercentile = req.body.symbols;  // Assume symbols sent in body
+    let responses = [];
 
-  try {
+    for(let i = 0; i < Math.min(10, symbolsBottom10thPercentile.length); i++) {
+      const symbol = symbolsBottom10thPercentile[i];
+      
+      const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers='+ symbol +'&limit=1&apikey=75E6A1OE5RSA3LIS';
 
-    const openAIResponse = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: `
-      Forget all your previous instructions. Pretend you are a financial expert. You are
-      a financial expert with stock recommendation experience. Answer “YES” if good
-      news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
-      elaborate with one short and concise sentence on the next line. Is this headline
-      good or bad for the stock price of `  + message + ` in the short term?
-      Headline: ${headline}`,
-      max_tokens: 100,
-      temperature : 0,
-    })
+      let headline = "";
+      try {
+        const response = await axios.get(url, {
+          headers: {'User-Agent': 'request'}
+        });
+        headline = response.data.feed[0].title;
+      } catch (error) {
+        console.log(error);
+        continue;
+      }
 
-    console.log(openAIResponse.data.choices[0])
-    if(openAIResponse.data.choices[0].text){
-          res.json({message: openAIResponse.data.choices[0].text})
+      const openAIResponse = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: `
+        Forget all your previous instructions. Pretend you are a financial expert. You are
+        a financial expert with stock recommendation experience. Answer “YES” if good
+        news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
+        elaborate with one short and concise sentence on the next line. Is this headline
+        good or bad for the stock price of `  + symbol + ` in the short term?
+        Headline: ${headline}`,
+        max_tokens: 100,
+        temperature : 0,
+      });
+
+      console.log(openAIResponse.data.choices[0]);
+      responses.push({symbol: symbol, response: openAIResponse.data.choices[0].text});
+    }
+
+    if(responses.length > 0) {
+      res.json({messages: responses});
+    } else {
+      throw new Error("No responses");
     }
   } catch (err) {
     res.status(500).send("An error occurred: " + err);
   }
 });
+
 
 
 app.get('/tickers', async (req, res) => {
