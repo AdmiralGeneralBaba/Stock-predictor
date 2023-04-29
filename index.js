@@ -1,4 +1,5 @@
-// a express server which will handle api requests coming in and respond back with a json object. it will use body parser as well as cors
+// a express server which will handle api requests coming in and respond back with a json object. it will use body parser as well as cors7
+
 const OpenAI = require ('openai');
 const { Configuration, OpenAIApi } = OpenAI;
 const express = require('express');
@@ -6,6 +7,12 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
 const port = 3001 ; 
+
+//Alpha vantage go:
+const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&limit=3&apikey=75E6A1OE5RSA3LIS';
+const axios = require('axios');
+
+
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
@@ -18,6 +25,16 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.post('/' , async (req, res) => {
+  axios.get(url, {
+    headers: {'User-Agent': 'request'}
+  })
+  .then(response => {
+    console.log(response.data);
+  })
+  .catch(error => {
+    console.log(error);
+  });
+  
     const { message } = req.body;
    const response = await openai.createCompletion({
     model: "text-davinci-003",
@@ -41,5 +58,6 @@ app.post('/' , async (req, res) => {
 
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:' + port);
+    
 });
 
