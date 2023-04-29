@@ -24,11 +24,11 @@ function App() {
         fetch('http://localhost:3001/tickers', {
             method: 'GET',
         })
-        .then((res) => res.text())
+        .then((res) => res.blob())
         .then((data) => {
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([data], { type: 'text/plain' }));
-            link.download = 'stocks.txt';
+            link.href = URL.createObjectURL(data);
+            link.download = 'stocks.xlsx';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

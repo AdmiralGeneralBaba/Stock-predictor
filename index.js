@@ -64,16 +64,17 @@ app.get('/tickers', async (req, res) => {
   try {
     const response = await axios.get("https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=75E6A1OE5RSA3LIS");
     const data = response.data;
-    
-    const rows = data.split('\n');  // split the CSV data by rows
-    rows.shift();  // remove the first row (column headers)
 
-    const symbols = rows.map(row => row.split(',')[0]);  // assuming the ticker is the first column
+    const rows = data.split('\n');
+    rows.shift();
+
+    const symbols = rows.map(row => row.split(',')[0]);
+
+    console.log(`Fetched ${symbols.length} symbols`);
 
     const marketCaps = [];
-    const BATCH_SIZE = 100;  // Adjust this according to the API's limit
+    const BATCH_SIZE = 100;
 
-    // Split symbols into batches and make requests for each batch
     for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
       const batchSymbols = symbols.slice(i, i + BATCH_SIZE);
       const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${batchSymbols.join(',')}`;
@@ -89,34 +90,36 @@ app.get('/tickers', async (req, res) => {
       }
     }
 
-    // Calculate the 10th percentile market cap
-    marketCaps.sort((a, b) => a.marketCap - b.marketCap);
-    const percentile10th = marketCaps[Math.floor(marketCaps.length * 0.1)].marketCap;
+    console.log(`Fetched market cap for ${marketCaps.length} symbols`);
 
-    // Filter the symbols that are in the bottom 10th percentile
+    const sortedMarketCaps = marketCaps.sort((a, b) => a.marketCap - b.marketCap);
+    const percentileIndex = Math.ceil(sortedMarketCaps.length * 0.1) - 1;
+    const percentile10th = sortedMarketCaps[percentileIndex].marketCap;
+
+    console.log(`10th percentile market cap: ${percentile10th}`);
+
     const symbolsBottom10thPercentile = marketCaps.filter(({ marketCap }) => marketCap <= percentile10th)
                                                    .map(({ symbol }) => symbol);
 
-    console.log("Symbols in the bottom 10th percentile:", symbolsBottom10thPercentile);
+    console.log(`Symbols in the bottom 10th percentile: ${symbolsBottom10thPercentile.length}`);
 
-    // Call API requests for the first three tickers in the bottom 10th percentile
-    const firstThreeTickers = symbolsBottom10thPercentile.slice(0, 3);
-    const newsSentimentPromises = firstThreeTickers.map(async (ticker) => {
-      try {
-        const tickerResponse = await axios.get(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=1&apikey=75E6A1OE5RSA3LIS`);
-        console.log(`News sentiment for ${ticker}:`, tickerResponse.data);
-      } catch (error) {
-        console.error(`Error fetching news sentiment for ${ticker}: ${error}`);
-      }
-    });
-    
-    await Promise.all(newsSentimentPromises);
-    res.send("Symbols in the bottom 10th percentile: " + symbolsBottom10thPercentile.join(', '));
+    const XLSX = require('xlsx');
+    const workbook = XLSX.utils.book_new();
+    const worksheet_data = symbolsBottom10thPercentile.map(symbol => [symbol]);
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheet_data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+    const buffer = XLSX.write(workbook, {type: 'buffer', bookType: 'xlsx'});
+    res.setHeader('Content-Disposition', 'attachment; filename=stocks.xlsx');
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
   } catch (err) {
     console.error("An error occurred: " + err);
     res.status(500).send("An error occurred: " + err);
   }
 });
+
+
 
 
 
