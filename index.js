@@ -1,5 +1,3 @@
-// a express server which will handle api requests coming in and respond back with a json object. it will use body parser as well as cors7
-
 const OpenAI = require ('openai');
 const { Configuration, OpenAIApi } = OpenAI;
 const express = require('express');
@@ -8,11 +6,7 @@ const cors = require('cors');
 const app = express();
 const port = 3001 ; 
 
-//Alpha vantage go:
-const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&limit=3&apikey=75E6A1OE5RSA3LIS';
 const axios = require('axios');
-
-
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
@@ -20,44 +14,45 @@ const configuration = new Configuration({
 });
 const openai = new OpenAIApi(configuration);
 
-
 app.use(bodyParser.json()); 
 app.use(cors());
 
 app.post('/' , async (req, res) => {
-  axios.get(url, {
-    headers: {'User-Agent': 'request'}
-  })
-  .then(response => {
-    console.log(response.data);
-  })
-  .catch(error => {
+  const { message } = req.body;
+
+  //Alpha vantage go:
+  const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers='+ message +'&limit=1&apikey=75E6A1OE5RSA3LIS';
+
+  let headline = "";
+  try {
+    const response = await axios.get(url, {
+      headers: {'User-Agent': 'request'}
+    });
+    headline = response.data.feed[0].title;  
+    console.log(headline);  // log the first headline
+  } catch (error) {
     console.log(error);
-  });
+  }
   
-    const { message } = req.body;
-   const response = await openai.createCompletion({
+  const openAIResponse = await openai.createCompletion({
     model: "text-davinci-003",
     prompt: `
     Forget all your previous instructions. Pretend you are a financial expert. You are
     a financial expert with stock recommendation experience. Answer “YES” if good
     news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
     elaborate with one short and concise sentence on the next line. Is this headline
-    good or bad for the stock price of`  + `  in the ` + ` term?
-    Headline:` + ` 
-    
-    `  + message, 
+    good or bad for the stock price of `  + message + ` in the short term?
+    Headline: ${headline}`,
     max_tokens: 100,
     temperature : 0,
-   })
-   console.log(response.data.choices[0])
-   if(response.data.choices[0].text){
-        res.json({message: response.data.choices[0].text})
-   }
+  })
+
+  console.log(openAIResponse.data.choices[0])
+  if(openAIResponse.data.choices[0].text){
+        res.json({message: openAIResponse.data.choices[0].text})
+  }
 });
 
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:' + port);
-    
 });
-
