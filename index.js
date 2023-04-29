@@ -34,8 +34,6 @@ app.post('/' , async (req, res) => {
   } catch (error) {
     console.log(error);
   }
-  
-  // Get and print all stock tickers
   const tickerUrl = 'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=75E6A1OE5RSA3LIS';
 
   try {
@@ -47,7 +45,9 @@ app.post('/' , async (req, res) => {
 
     rows.forEach(row => {
       const columns = row.split(',');  // split each row into columns
-      console.log("Ticker:", columns[0]);  // assuming the ticker is the first column
+      if (columns[0] === message) {  // assuming the ticker is the first column
+        console.log("Ticker:", columns[0]);
+      }
     });
   } catch (error) {
     console.log(error);
