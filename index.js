@@ -18,7 +18,7 @@ const openai = new OpenAIApi(configuration);
 app.use(bodyParser.json()); 
 app.use(cors());
 
-app.post('/' , async (req, res) => {
+app.post('/', async (req, res) => {
   const { message } = req.body;
 
   //Alpha vantage go:
@@ -34,40 +34,35 @@ app.post('/' , async (req, res) => {
   } catch (error) {
     console.log(error);
   }
-  const tickerUrl = 'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=75E6A1OE5RSA3LIS';
 
   try {
-    const tickerResponse = await axios.get(tickerUrl);
-    const data = tickerResponse.data;
-    
-    const rows = data.split('\n');  // split the CSV data by rows
-    rows.shift();  // remove the first row (column headers)
+    const tickersResponse = await axios.get('http://localhost:3001/tickers');
+    const tickersData = tickersResponse.data;
+    console.log(tickersData); // log the tickers data
 
-    rows.forEach(row => {
-      const columns = row.split(',');  // split each row into columns
-      if (columns[0] === message) {  // assuming the ticker is the first column
-        console.log("Ticker:", columns[0]);
-      }
-    });
-  } catch (error) {
-    console.log(error);
-  }
-  const openAIResponse = await openai.createCompletion({
-    model: "text-davinci-003",
-    prompt: `
-    Forget all your previous instructions. Pretend you are a financial expert. You are
-    a financial expert with stock recommendation experience. Answer “YES” if good
-    news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
-    elaborate with one short and concise sentence on the next line. Is this headline
-    good or bad for the stock price of `  + message + ` in the short term?
-    Headline: ${headline}`,
-    max_tokens: 100,
-    temperature : 0,
-  })
+    // Filter the data to find the ticker matching the message
+    const tickerData = tickersData.filter(ticker => ticker.symbol === message)[0];
+    console.log("Ticker:", tickerData.symbol);
 
-  console.log(openAIResponse.data.choices[0])
-  if(openAIResponse.data.choices[0].text){
-        res.json({message: openAIResponse.data.choices[0].text})
+    const openAIResponse = await openai.createCompletion({
+      model: "text-davinci-003",
+      prompt: `
+      Forget all your previous instructions. Pretend you are a financial expert. You are
+      a financial expert with stock recommendation experience. Answer “YES” if good
+      news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
+      elaborate with one short and concise sentence on the next line. Is this headline
+      good or bad for the stock price of `  + message + ` in the short term?
+      Headline: ${headline}`,
+      max_tokens: 100,
+      temperature : 0,
+    })
+
+    console.log(openAIResponse.data.choices[0])
+    if(openAIResponse.data.choices[0].text){
+          res.json({message: openAIResponse.data.choices[0].text})
+    }
+  } catch (err) {
+    res.status(500).send("An error occurred: " + err);
   }
 });
 
@@ -80,17 +75,42 @@ app.get('/tickers', async (req, res) => {
     const rows = data.split('\n');  // split the CSV data by rows
     rows.shift();  // remove the first row (column headers)
 
-    rows.forEach(row => {
-      const columns = row.split(',');  // split each row into columns
-      console.log("Ticker:", columns[0]);  // assuming the ticker is the first column
-    });
+    const symbols = rows.map(row => row.split(',')[0]);  // assuming the ticker is the first column
 
-    res.send("Finished printing tickers.");
+    const marketCaps = [];
+    const BATCH_SIZE = 100;  // Adjust this according to the API's limit
+
+    // Split symbols into batches and make requests for each batch
+    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+      const batchSymbols = symbols.slice(i, i + BATCH_SIZE);
+      const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${batchSymbols.join(',')}`;
+      try {
+        const batchResponse = await axios.get(url);
+        const results = batchResponse.data.quoteResponse.result;
+
+        results.forEach(result => {
+          marketCaps.push({ symbol: result.symbol, marketCap: result.marketCap });
+        });
+      } catch (error) {
+        console.error(`Error fetching market cap for ${batchSymbols.join(', ')}: ${error}`);
+      }
+    }
+
+    // Calculate the 10th percentile market cap
+    marketCaps.sort((a, b) => a.marketCap - b.marketCap);
+    const percentile10th = marketCaps[Math.floor(marketCaps.length * 0.1)].marketCap;
+
+    // Filter the symbols that are in the bottom 10th percentile
+    const symbolsBottom10thPercentile = marketCaps.filter(({ marketCap }) => marketCap <= percentile10th)
+                                                   .map(({ symbol }) => symbol);
+
+    console.log("Symbols in the bottom 10th percentile:", symbolsBottom10thPercentile);
+
+    res.send("Symbols in the bottom 10th percentile: " + symbolsBottom10thPercentile.join(', '));
   } catch (err) {
     res.status(500).send("An error occurred: " + err);
   }
 });
-
 
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:' + port);
