@@ -1,3 +1,4 @@
+const { StringStream } = require("scramjet");
 const OpenAI = require ('openai');
 const { Configuration, OpenAIApi } = OpenAI;
 const express = require('express');
@@ -34,6 +35,23 @@ app.post('/' , async (req, res) => {
     console.log(error);
   }
   
+  // Get and print all stock tickers
+  const tickerUrl = 'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=75E6A1OE5RSA3LIS';
+
+  try {
+    const tickerResponse = await axios.get(tickerUrl);
+    const data = tickerResponse.data;
+    
+    const rows = data.split('\n');  // split the CSV data by rows
+    rows.shift();  // remove the first row (column headers)
+
+    rows.forEach(row => {
+      const columns = row.split(',');  // split each row into columns
+      console.log("Ticker:", columns[0]);  // assuming the ticker is the first column
+    });
+  } catch (error) {
+    console.log(error);
+  }
   const openAIResponse = await openai.createCompletion({
     model: "text-davinci-003",
     prompt: `
@@ -52,6 +70,27 @@ app.post('/' , async (req, res) => {
         res.json({message: openAIResponse.data.choices[0].text})
   }
 });
+
+
+app.get('/tickers', async (req, res) => {
+  try {
+    const response = await axios.get("https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=75E6A1OE5RSA3LIS");
+    const data = response.data;
+    
+    const rows = data.split('\n');  // split the CSV data by rows
+    rows.shift();  // remove the first row (column headers)
+
+    rows.forEach(row => {
+      const columns = row.split(',');  // split each row into columns
+      console.log("Ticker:", columns[0]);  // assuming the ticker is the first column
+    });
+
+    res.send("Finished printing tickers.");
+  } catch (err) {
+    res.status(500).send("An error occurred: " + err);
+  }
+});
+
 
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:' + port);
