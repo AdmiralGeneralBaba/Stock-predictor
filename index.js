@@ -11,7 +11,7 @@ const axios = require('axios');
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
-    apiKey: "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",
+    apiKey: "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",
 });
 const openai = new OpenAIApi(configuration);
 
