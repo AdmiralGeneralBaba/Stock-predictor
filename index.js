@@ -12,7 +12,7 @@ const { time } = require("console");
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
-    apiKey: "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",
+    apiKey: "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",
 });
 const openai = new OpenAIApi(configuration);
 
