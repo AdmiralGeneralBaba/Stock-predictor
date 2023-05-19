@@ -20,6 +20,10 @@ app.use(bodyParser.json());
 app.use(cors());
 
 
+var sentimentCollection = [
+
+]
+
 async function getSentiment(message) {
   const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers='+ message +'&limit=1&apikey=75E6A1OE5RSA3LIS';
 
@@ -36,7 +40,7 @@ async function getSentiment(message) {
     summary = response.data.feed[0].summary;
 
 
-    console.log(headline);  // log the first headline
+    console.log(headline);
   } catch (error) {
     console.log(error);
   }
@@ -65,11 +69,14 @@ async function getSentiment(message) {
   }
 }
 
+function sentimentAdder(sentiment, sentimentCollection) {
+
+}
+
 getSentiment("META");
 setInterval(() => {
-  getSentiment("META");
-}, 60 * 1000); // 60 * 1000 milliseconds = 1 minute
-
+  sentimentCollection = sentimentAdder(getSentiment("META"), sentimentCollection) ;
+}, 60 * 1000);
 
 app.get('/tickers', async (req, res) => {
   try {
