@@ -15,3 +15,10 @@ AS OF 1/5/2023:
 - Do 'NPM start' in one terminal, and node 'index.js' in another
 - 'Find stocks' button will return a list of stocks in the bottom 10th percentile in a excel spreadsheet
 - Put in a stock picker for the analysis, and click 'submit'. 
+
+5/19/23
+What needs to be done: 
+- return top 100 stock tickers of bottom 10th percentile
+- call 5 stocks with alpha vantage API call
+- call the GPT api call 5 times for each of those stock tickers
+- return all the results in order of being called on the app, as a list of 'nos'
