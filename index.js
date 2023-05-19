@@ -12,7 +12,11 @@ const { time } = require("console");
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
+<<<<<<< Updated upstream
     apiKey: "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",
+=======
+    apiKey: "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",
+>>>>>>> Stashed changes
 });
 const openai = new OpenAIApi(configuration);
 
