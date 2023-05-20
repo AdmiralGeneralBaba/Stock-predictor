@@ -3,6 +3,8 @@ Uses gpt-4 to predict the intra-day movement of stocks.
 
 Uses the findings and methodology of this paper : https://arxiv.org/pdf/2304.07619.pdf, and automates the process
 
+Trello: https://trello.com/b/fRPkmKhu/test
+ 
 Aim of this project:
 1. To be able to predict the day-to-day movement of a stock
 2. To be able to locate stocks at the bottom 10th percentile of the NYSE, find which ones have headlines with dates less then 1 - 2 days away
