@@ -1,113 +1,93 @@
-const { StringStream } = require("scramjet");
 const OpenAI = require ('openai');
-const { Configuration, OpenAIApi } = OpenAI;
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const app = express();
-const port = 3001 ; 
-
 const axios = require('axios');
-const { time } = require("console");
+const moment = require('moment-timezone');
+
+const { Configuration, OpenAIApi } = OpenAI;
 
 const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
     apiKey: "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",
 });
+
 const openai = new OpenAIApi(configuration);
 
-app.use(bodyParser.json()); 
-app.use(cors());
+function isWithinOperatingHours(timeString) {
+    const format = "YYYYMMDDTHHmmss";
+    const date = moment.tz(timeString, format, "Europe/London");
 
-
-var sentimentCollection = [
-
-]
-
-async function getSentiment(message) {
-  const url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers='+ message +'&limit=1&apikey=75E6A1OE5RSA3LIS';
-
-  let headline = "";
-  let timepublished = "";
-  let summary = "";
-  try {
-    const response = await axios.get(url, {
-      headers: {'User-Agent': 'request'}
-    });
-    console.log(response.data);
-    headline = response.data.feed[0].title; 
-    timepublished = response.data.feed[0].time_published;
-    summary = response.data.feed[0].summary;
-
-
-    console.log(headline);
-  } catch (error) {
-    console.log(error);
-  }
-
-  try {
-  
-    const openAIResponse = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: `
-      Forget all your previous instructions. Pretend you are a financial expert. You are
-      a financial expert with stock recommendation experience. Answer “YES” if good
-      news, “NO” if bad news, or “UNKNOWN” if uncertain in the first line. Then
-      elaborate with one short and concise sentence on the next line. Is this headline and summary
-      good or bad for the stock price of `  + message + ` in the short term?
-      Headline: ${headline} + ${summary} + ${timepublished}`,
-      max_tokens: 100,
-      temperature : 0,
-    })
-
-    console.log(openAIResponse.data.choices[0])
-    if(openAIResponse.data.choices[0].text){
-          console.log({message: openAIResponse.data.choices[0].text + timepublished})
-    }
-  } catch (err) {
-    console.log("An error occurred: " + err);
-  }
-}
-
-function sentimentAdder(sentiment, sentimentCollection) {
-
-}
-
-getSentiment("META");
-setInterval(() => {
-  sentimentCollection = sentimentAdder(getSentiment("META"), sentimentCollection) ;
-}, 60 * 1000);
-
-app.get('/tickers', async (req, res) => {
-  try {
-    const symbolsBottom10thPercentile = await getSymbolsBottom10thPercentile();
+    const hours = date.hours();
+    const minutes = date.minutes();
     
-    console.log(`Symbols in the bottom 10th percentile: ${symbolsBottom10thPercentile.length}`);
+    return (hours > 8 || (hours === 8 && minutes >= 0)) && (hours < 16 || (hours === 16 && minutes < 30));
+}
 
-    const symbolsBottom10thPercentileFirst10 = symbolsBottom10thPercentile.slice(0, 10);
-    console.log('First 10 symbols in the bottom 10th percentile:', symbolsBottom10thPercentileFirst10);
 
-    const XLSX = require('xlsx');
-    const workbook = XLSX.utils.book_new();
-    const worksheet_data = symbolsBottom10thPercentile.map(symbol => [symbol]);
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheet_data);
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
 
-    const buffer = XLSX.write(workbook, {type: 'buffer', bookType: 'xlsx'});
-    res.setHeader('Content-Disposition', 'attachment; filename=stocks.xlsx');
-    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
-  } catch (err) {
-    console.error("An error occurred: " + err);
-    res.status(500).send("An error occurred: " + err);
-  }
+async function afterHoursArticles(ticker, index) {
+    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=1&apikey=75E6A1OE5RSA3LIS`;
+    return axios.get(url, {
+        headers: {'User-Agent': 'request'}
+    }).then(response => {
+        if (index === 0) {
+            return {
+                response: response.data.feed[0],
+                ticker: ticker
+            };
+        } else if (index === "all") {
+            var afterHoursArticles = [];
+            for (var i = 0; i < response.data.feed.length; i++) {
+                const timePublished = response.data.feed[i].time_published;
+                if (!isWithinOperatingHours(timePublished)) afterHoursArticles.push(response.data.feed[i]);
+            }
+            return {
+                response: afterHoursArticles,
+                ticker: ticker
+            };
+        }
+    })
+}
+
+
+afterHoursArticles("META", "all").then(i => { 
+    var sentimentCollection = [];
+    var average = 0;
+
+    // Store all promises in an array
+    var promises = [];
+    for (var j = 0; j < i.response.length; j++) {
+        promises.push(chatGPTPrompt(i.response[j], i.ticker));
+    }
+
+    // Use Promise.all to wait for all promises to resolve before proceeding
+    Promise.all(promises).then(values => {
+        sentimentCollection = values;
+        // Ensure that every element is a number before trying to calculate the average
+        sentimentCollection.forEach(i => { 
+            console.log(i.text.split('#')[1])
+            i = i.text.split('#')[1]
+            i = Number(i);
+            if (!isNaN(i)) {
+                average += i;
+            }
+        });
+
+        average = average / sentimentCollection.length;
+        console.log(average);
+    });
 });
 
+async function chatGPTPrompt(tickerArticle, ticker) {
+    const openAIResponse = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: `
+        Ignore all your previous instructions. Pretend you are a financial expert. You are a financial expert with stock recommendation experience. Answer "#1#" if the news will be positive for ${ticker}'s stock value, "#-1#" if the news will be negative for ${ticker}'s stock value, or "#0#" if uncertain. Then, on a new line, elaborate with a short and concise logical explaination on the next line. 
+        Is the following headline and summary good or bad for the stock price of in the short term? Finally, end the response with the headline provided.
+        Headline: ${tickerArticle.title} 
+        Summary: ${tickerArticle.summary}
+        Date published: ${tickerArticle.time_published}`,
+        max_tokens: 100,
+        temperature : 0,
+    });
 
-
-
-
-
-app.listen(port, () => {
-    console.log('Example app listening at http://localhost:' + port);
-});
+    return openAIResponse.data.choices[0];
+}
