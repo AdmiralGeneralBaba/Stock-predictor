@@ -8,6 +8,7 @@ const configuration = new Configuration({
     organization: "org-BHaORzAJnznzo598IHG5xn2d",
     apiKey: "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",
 });
+
 const openai = new OpenAIApi(configuration);
 
 function isWithinOperatingHours(timeString) {
@@ -60,9 +61,10 @@ afterHoursArticles("META", "all").then(i => {
     // Use Promise.all to wait for all promises to resolve before proceeding
     Promise.all(promises).then(values => {
         sentimentCollection = values;
-
         // Ensure that every element is a number before trying to calculate the average
         sentimentCollection.forEach(i => { 
+            console.log(i.text.split('#')[1])
+            i = i.text.split('#')[1]
             i = Number(i);
             if (!isNaN(i)) {
                 average += i;
@@ -79,7 +81,7 @@ async function chatGPTPrompt(tickerArticle, ticker) {
         model: "text-davinci-003",
         prompt: `
         Ignore all your previous instructions. Pretend you are a financial expert. You are a financial expert with stock recommendation experience. Answer "#1#" if the news will be positive for ${ticker}'s stock value, "#-1#" if the news will be negative for ${ticker}'s stock value, or "#0#" if uncertain. Then, on a new line, elaborate with a short and concise logical explaination on the next line. 
-        Is the following headline and summary good or bad for the stock price of in the short term?
+        Is the following headline and summary good or bad for the stock price of in the short term? Finally, end the response with the headline provided.
         Headline: ${tickerArticle.title} 
         Summary: ${tickerArticle.summary}
         Date published: ${tickerArticle.time_published}`,
@@ -87,5 +89,5 @@ async function chatGPTPrompt(tickerArticle, ticker) {
         temperature : 0,
     });
 
-    return openAIResponse.data.choices[0].text.split('#')[1];
+    return openAIResponse.data.choices[0];
 }
