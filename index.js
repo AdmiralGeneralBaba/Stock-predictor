@@ -25,9 +25,11 @@ function isWithinOperatingHours(timeString) {
 
 async function afterHoursArticles(ticker, index) {
     const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=1&apikey=75E6A1OE5RSA3LIS`;
+    console.log(ticker)
     return axios.get(url, {
         headers: {'User-Agent': 'request'}
     }).then(response => {
+        if (!response.data.feed.length) return;
         if (index === 0) {
             return {
                 response: response.data.feed[0],
@@ -35,6 +37,7 @@ async function afterHoursArticles(ticker, index) {
             };
         } else if (index === "all") {
             var afterHoursArticles = [];
+            console.log(response.feed)
             for (var i = 0; i < response.data.feed.length; i++) {
                 const timePublished = response.data.feed[i].time_published;
                 if (!isWithinOperatingHours(timePublished)) afterHoursArticles.push(response.data.feed[i]);
@@ -48,31 +51,37 @@ async function afterHoursArticles(ticker, index) {
 }
 
 
-afterHoursArticles("META", "all").then(i => { 
-    var sentimentCollection = [];
-    var average = 0;
+// Assume we have an array of ticker symbols
+var tickers = ['HD', 'JPM', 'UNH', 'INTC', 'NFLX'];
 
-    // Store all promises in an array
-    var promises = [];
-    for (var j = 0; j < i.response.length; j++) {
-        promises.push(chatGPTPrompt(i.response[j], i.ticker));
-    }
-
-    // Use Promise.all to wait for all promises to resolve before proceeding
-    Promise.all(promises).then(values => {
-        sentimentCollection = values;
-        // Ensure that every element is a number before trying to calculate the average
-        sentimentCollection.forEach(i => { 
-            console.log(i.text.split('#')[1])
-            i = i.text.split('#')[1]
-            i = Number(i);
-            if (!isNaN(i)) {
-                average += i;
-            }
+// loop over the tickers array
+tickers.forEach(ticker => {
+    afterHoursArticles(ticker, "all").then(i => { 
+        if (!i) return console.log(`Error on ${ticker}`)
+        var sentimentCollection = [];
+        var average = 0;
+    
+        // Store all promises in an array
+        var promises = [];
+        for (var j = 0; j < i.response.length; j++) {
+            promises.push(chatGPTPrompt(i.response[j], i.ticker));
+        }
+    
+        // Use Promise.all to wait for all promises to resolve before proceeding
+        Promise.all(promises).then(values => {
+            sentimentCollection = values;
+            // Ensure that every element is a number before trying to calculate the average
+            sentimentCollection.forEach(i => { 
+                i = i.text.split('#')[1]
+                i = Number(i);
+                if (!isNaN(i)) {
+                    average += i;
+                }
+            });
+    
+            average = average / sentimentCollection.length;
+            console.log(`${ticker} - ${average}`);
         });
-
-        average = average / sentimentCollection.length;
-        console.log(average);
     });
 });
 
