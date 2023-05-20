@@ -5,7 +5,8 @@ var weights = { /* SHOULD TOTAL TO 1 (PERCENT IN DECIMAL VALUE) */
 } 
 
 function computeAggregateSentiment(newsSentiment, ticker, socialSentiment, fearAndGreedIndex) {
-    console.log(`${ticker} - News Sentiment: ${newsSentiment}\nMarket Fear & Greed Index: ${fearAndGreedIndex}`);
+    console.log(`${ticker} - News Sentiment: ${newsSentiment}
+    Market Fear & Greed Index: ${fearAndGreedIndex}`);
 }
 
 module.exports = computeAggregateSentiment;

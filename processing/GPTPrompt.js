@@ -20,7 +20,7 @@ async function chatGPTPrompt(tickerArticle, ticker) {
         max_tokens: 100,
         temperature : 0,
     });
-
+    console.log(openAIResponse.data.choices[0].text)
     return openAIResponse.data.choices[0];
 }
 

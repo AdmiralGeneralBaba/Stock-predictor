@@ -55,6 +55,7 @@ async function chatGPTPrompt(tickerArticle, ticker) {
 
 var tickers = ['NFLX'];
 
+
 // TODO: MOVE THIS TO ITS OWN FILE - I THINK INSIDE NEWS SENTIMENT 
 // AND THEN CHANGE THE INPUT FOR PROCESS TICKER I GUESS? 
 const computeSentimentAverage = (sentiments) => {
