@@ -1,90 +1,38 @@
 const OpenAI = require ('openai');
 const axios = require('axios');
-const moment = require('moment-timezone');
+const computeAggregateSentiment = require('./computeAggregateSentiment.js');
+const fearAndGreedIndex = require('./data/fearAndGreedIndex.js');
+const afterHoursArticles = require('./data/newsSentiment.js');
+
+
+require('dotenv').config();
+
 
 const { Configuration, OpenAIApi } = OpenAI;
 
 const configuration = new Configuration({
-    organization: "org-BHaORzAJnznzo598IHG5xn2d",
-    apiKey: "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",
+    organization: process.env.ORG_KEY,
+    apiKey: process.env.API_KEY,
 });
+/* 
+class stockGPT {
+    constructor() {
+        this.values = {
+            newsSentiment: undefined,
+            socialSentiment: undefined,
+            fearAndGreedIndex: undefined
+        }
+        this.functions = {
 
+        }
+    }
+
+}
+
+*/
 const openai = new OpenAIApi(configuration);
 
-function isWithinOperatingHours(timeString) {
-    const format = "YYYYMMDDTHHmmss";
-    const date = moment.tz(timeString, format, "Europe/London");
-
-    const hours = date.hours();
-    const minutes = date.minutes();
-    
-    return (hours > 8 || (hours === 8 && minutes >= 0)) && (hours < 16 || (hours === 16 && minutes < 30));
-}
-
-
-
-async function afterHoursArticles(ticker, index) {
-    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=1&apikey=75E6A1OE5RSA3LIS`;
-    console.log(ticker)
-    return axios.get(url, {
-        headers: {'User-Agent': 'request'}
-    }).then(response => {
-        if (!response.data.feed.length) return;
-        if (index === 0) {
-            return {
-                response: response.data.feed[0],
-                ticker: ticker
-            };
-        } else if (index === "all") {
-            var afterHoursArticles = [];
-            console.log(response.feed)
-            for (var i = 0; i < response.data.feed.length; i++) {
-                const timePublished = response.data.feed[i].time_published;
-                if (!isWithinOperatingHours(timePublished)) afterHoursArticles.push(response.data.feed[i]);
-            }
-            return {
-                response: afterHoursArticles,
-                ticker: ticker
-            };
-        }
-    })
-}
-
-
-// Assume we have an array of ticker symbols
-var tickers = ['HD', 'JPM', 'UNH', 'INTC', 'NFLX'];
-
-// loop over the tickers array
-tickers.forEach(ticker => {
-    afterHoursArticles(ticker, "all").then(i => { 
-        if (!i) return console.log(`Error on ${ticker}`)
-        var sentimentCollection = [];
-        var average = 0;
-    
-        // Store all promises in an array
-        var promises = [];
-        for (var j = 0; j < i.response.length; j++) {
-            promises.push(chatGPTPrompt(i.response[j], i.ticker));
-        }
-    
-        // Use Promise.all to wait for all promises to resolve before proceeding
-        Promise.all(promises).then(values => {
-            sentimentCollection = values;
-            // Ensure that every element is a number before trying to calculate the average
-            sentimentCollection.forEach(i => { 
-                i = i.text.split('#')[1]
-                i = Number(i);
-                if (!isNaN(i)) {
-                    average += i;
-                }
-            });
-    
-            average = average / sentimentCollection.length;
-            console.log(`${ticker} - ${average}`);
-        });
-    });
-});
-
+// TODO: TRANSFER THIS OVER TO NEW FILE FOR READABILITY IDK WHY IT DOESNT WORK THO 
 async function chatGPTPrompt(tickerArticle, ticker) {
     const openAIResponse = await openai.createCompletion({
         model: "text-davinci-003",
@@ -100,3 +48,46 @@ async function chatGPTPrompt(tickerArticle, ticker) {
 
     return openAIResponse.data.choices[0];
 }
+
+
+// THIS THE ACTUAL RUN 
+
+
+var tickers = ['NFLX'];
+
+// TODO: MOVE THIS TO ITS OWN FILE - I THINK INSIDE NEWS SENTIMENT 
+// AND THEN CHANGE THE INPUT FOR PROCESS TICKER I GUESS? 
+const computeSentimentAverage = (sentiments) => {
+    let sum = 0;
+    let count = 0;
+    sentiments.forEach(i => { 
+        let sentimentValue = Number(i.text.split('#')[1]);
+        if (!isNaN(sentimentValue)) {
+            sum += sentimentValue;
+            count++;
+        }
+    });
+    return sum / count;
+}
+
+// Main function to process each ticker
+const processTicker = (ticker) => {
+    afterHoursArticles(ticker, "all").then(articles => { 
+        if (!articles) return console.log(`Error on ${ticker}`)
+        let sentimentPromises = articles.response.map(article => chatGPTPrompt(article, articles.ticker));
+        
+        Promise.all(sentimentPromises).then(sentiments => {
+            let averageSentiment = computeSentimentAverage(sentiments);
+            console.log(`${ticker} - ${averageSentiment}`);
+
+            fearAndGreedIndex().then(data => {
+                let fgi = data.fgi.now.value;
+                computeAggregateSentiment(averageSentiment, ticker, 0 /* SOCIAL SENTIMENT IS NOT SET YET*/, fgi);
+            });
+        });
+    });
+}
+
+var tickers = ['NFLX'];
+
+tickers.forEach(processTicker);
