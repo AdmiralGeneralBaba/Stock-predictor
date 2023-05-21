@@ -5,8 +5,8 @@ async function fearAndGreedIndex() {
         method: 'GET',
         url: 'https://fear-and-greed-index.p.rapidapi.com/v1/fgi',
         headers: {
-          'X-RapidAPI-Key': process.env.RAPID_API_KEY,
-          'X-RapidAPI-Host': 'fear-and-greed-index.p.rapidapi.com'
+            'X-RapidAPI-Key': process.env.RAPID_API_KEY,
+            'X-RapidAPI-Host': 'fear-and-greed-index.p.rapidapi.com'
         }
     };
 
@@ -15,6 +15,7 @@ async function fearAndGreedIndex() {
         return response.data;
     } catch (error) {
         console.error(error);
+        throw error; // Propagate the error up
     }
 }
 
