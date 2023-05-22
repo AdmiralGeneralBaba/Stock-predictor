@@ -18,6 +18,7 @@ organization: process.env.ORG_KEY,
 const openai = new OpenAIApi(configuration);
 
 // TODO: TRANSFER THIS OVER TO NEW FILE FOR READABILITY IDK WHY IT DOESNT WORK THO 
+// SAME WITH THE OTHER GPT PROMPT
 async function chatGPTPrompt(tickerArticle, ticker) {
     const openAIResponse = await openai.createCompletion({
         model: "text-davinci-003",
@@ -33,7 +34,6 @@ async function chatGPTPrompt(tickerArticle, ticker) {
 
     return openAIResponse.data.choices[0];
 }
-
 
 async function chatGPTPromptSocial(message, ticker) {
 
@@ -56,7 +56,7 @@ async function chatGPTPromptSocial(message, ticker) {
 // AND THEN CHANGE THE INPUT FOR PROCESS TICKER I GUESS? 
 const computeSentimentAverage = (sentiments) => {
     let sum = 0;
-    let count = 0;
+    let count = 0; // BECASUE WE DONT WANAN INCLIUDE NON NAN
     sentiments.forEach(i => { 
         let sentimentValue = Number(i.text.split('#')[1]);
         if (!isNaN(sentimentValue)) {
@@ -73,7 +73,7 @@ const processTicker = async (ticker) => {
     try {
         const messageIterations = 5; // This number is how many pages of messages we scan.
         
-        // Get articles and messages for the given ticker
+        // Get articles and messages for the given ticker TODO: CHANGE "ARTICLES" TO "NEWS" 
         const [articles, messages] = await Promise.all([
             afterHoursArticles(ticker),
             getMessages(messageIterations, ticker)
@@ -84,13 +84,14 @@ const processTicker = async (ticker) => {
         }
 
         // Compute sentiments
+        console.log(`${ticker} -\nArticles: ${articles.response.length}\nSocial posts: ${messages.response.length}`)
         const [newsSentiments, socialSentiments] = await Promise.all([
             Promise.all(articles.response.map(article => chatGPTPrompt(article, ticker))),
             Promise.all(messages.response.map(message => chatGPTPromptSocial(message, ticker)))
         ]);
 
         // Compute averages
-        const averageNewsSentiment = computeSentimentAverage(newsSentiments);
+        const averageNewsSentiment = computeSentimentAverage(newsSentiments); // TODO: JUST MAKE 0 IF NO NEWS
         const averageSocialSentiment = computeSentimentAverage(socialSentiments);
 
         // Get Fear and Greed Index and compute aggregate sentiment
@@ -105,12 +106,14 @@ const processTicker = async (ticker) => {
 };
 
 // COMPANY TICKERS ARRAY
-var tickers = ['NFLX', 'META', 'TSLA'];
+var tickers = ['NFLX', 'META', 'TSLA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'V', 'JNJ', 'JPM', 'WMT', 'PG', 'MA', 'UNH', 'NVDA'];
 
-tickers.forEach(ticker => { /* TICKER TICK TICK ICK TOK */
-    console.log(`Beginning process for ${ticker}`);
-    processTicker(ticker);
-});
+for (let i = 0; i < tickers.length; i++) {
+    setTimeout(() => {
+        console.log(`Beginning process for ${tickers[i]}`);
+        processTicker(tickers[i]); // MAYBE CHANGE TO 12SEC? saves us 3*n seconds- DIDNT WORK TIMED OUT LMAOO
+    }, i * 15000); // 15000 is so its delayed by 15s cause we're limited to 5 searches with alphavantage
+}
 
 
 
