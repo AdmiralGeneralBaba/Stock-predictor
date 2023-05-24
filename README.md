@@ -13,7 +13,7 @@ Aim of this project:
 5. To be able to keep track of live data, so that in the trades it is holding, another GPT agent will pull out the trade if the headline results in 'YES', meaning the short position will make a loss, or 'UNKNOWN' if during the trading day it is revealed, as to mitigate risk. 
 
 AS OF 1/5/2023:
-- In the terminal, split it
+- In the terminal, split it into two
 - Do 'NPM start' in one terminal, and node 'index.js' in another
 - 'Find stocks' button will return a list of stocks in the bottom 10th percentile in a excel spreadsheet
 - Put in a stock picker for the analysis, and click 'submit'. 
